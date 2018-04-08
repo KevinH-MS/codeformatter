@@ -34,7 +34,7 @@ namespace Microsoft.DotNet.CodeFormatting.Rules
     // Please keep these values sorted by number, not rule name.    
     internal static class GlobalSemanticRuleOrder
     {
-        public const int PrivateFieldNamingRule = 1;
+        public const int FieldNamingRule = 1;
         public const int MarkReadonlyFieldsRule = 2;
     }
 }

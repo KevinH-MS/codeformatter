@@ -18,11 +18,11 @@ using Microsoft.CodeAnalysis.VisualBasic.Syntax;
 
 namespace Microsoft.DotNet.CodeFormatting.Rules
 {
-    internal partial class PrivateFieldNamingRule
+    internal partial class FieldNamingRule
     {
         private sealed class VisualBasicRule : CommonRule
         {
-            protected override SyntaxNode AddPrivateFieldAnnotations(SyntaxNode syntaxNode, out int count)
+            protected override SyntaxNode AddFieldAnnotations(SyntaxNode syntaxNode, out int count)
             {
                 return VisualBasicPrivateFieldAnnotationRewriter.AddAnnotations(syntaxNode, out count);
             }
@@ -76,7 +76,7 @@ namespace Microsoft.DotNet.CodeFormatting.Rules
                     foreach (var v in d.Names)
                     {
                         var local = v;
-                        if (!IsGoodPrivateFieldName(v.Identifier.ValueText, isInstance))
+                        if (!IsGoodFieldName(v.Identifier.ValueText, isInstance))
                         {
                             local = local.WithAdditionalAnnotations(s_markerAnnotationArray);
                             _count++;
@@ -102,7 +102,7 @@ namespace Microsoft.DotNet.CodeFormatting.Rules
                 {
                     foreach (var v in d.Names)
                     {
-                        if (!IsGoodPrivateFieldName(v.Identifier.ValueText, isInstance))
+                        if (!IsGoodFieldName(v.Identifier.ValueText, isInstance))
                         {
                             return true;
                         }

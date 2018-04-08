@@ -7,6 +7,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel.Composition;
 using System.Linq;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -16,17 +17,17 @@ using Microsoft.CodeAnalysis.Rename;
 
 namespace Microsoft.DotNet.CodeFormatting.Rules
 {
-    [GlobalSemanticRule(PrivateFieldNamingRule.Name, PrivateFieldNamingRule.Description, GlobalSemanticRuleOrder.PrivateFieldNamingRule)]
-    internal partial class PrivateFieldNamingRule : IGlobalSemanticFormattingRule
+    [GlobalSemanticRule(FieldNamingRule.Name, FieldNamingRule.Description, GlobalSemanticRuleOrder.FieldNamingRule, isDefaultRule: true)]
+    internal partial class FieldNamingRule : IGlobalSemanticFormattingRule
     {
         internal const string Name = "FieldNames";
-        internal const string Description = "Prefix private fields with _ and statics with s_";
+        internal const string Description = "Prefix private fields with _ and Pascal case const fields";
 
         #region CommonRule
 
         private abstract class CommonRule
         {
-            protected abstract SyntaxNode AddPrivateFieldAnnotations(SyntaxNode syntaxNode, out int count);
+            protected abstract SyntaxNode AddFieldAnnotations(SyntaxNode syntaxNode, out int count);
 
             /// <summary>
             /// This method exists to work around DevDiv 1086632 in Roslyn.  The Rename action is 
@@ -39,7 +40,7 @@ namespace Microsoft.DotNet.CodeFormatting.Rules
             public async Task<Solution> ProcessAsync(Document document, SyntaxNode syntaxRoot, CancellationToken cancellationToken)
             {
                 int count;
-                var newSyntaxRoot = AddPrivateFieldAnnotations(syntaxRoot, out count);
+                var newSyntaxRoot = AddFieldAnnotations(syntaxRoot, out count);
 
                 if (count == 0)
                 {
@@ -67,7 +68,7 @@ namespace Microsoft.DotNet.CodeFormatting.Rules
                     // Make note, VB represents "fields" marked as "WithEvents" as properties, so don't be
                     // tempted to treat this as a IFieldSymbol. We only need the name, so ISymbol is enough.
                     var fieldSymbol = semanticModel.GetDeclaredSymbol(declaration, cancellationToken);
-                    var newName = GetNewFieldName(fieldSymbol);
+                    var newName = GetNewFieldName(fieldSymbol, fieldSymbol.DeclaredAccessibility == Accessibility.Public || HasConstantValue(fieldSymbol));
 
                     // Can happen with pathologically bad field names like _
                     if (newName == fieldSymbol.Name)
@@ -82,7 +83,14 @@ namespace Microsoft.DotNet.CodeFormatting.Rules
                 return solution;
             }
 
-            private static string GetNewFieldName(ISymbol fieldSymbol)
+            private static bool HasConstantValue(ISymbol symbol)
+            {
+                var field = symbol as IFieldSymbol;
+
+                return field != null ? field.HasConstantValue : false;
+            }
+
+            private static string GetNewFieldName(ISymbol fieldSymbol, bool isPublicOrHasConstantValue)
             {
                 var name = fieldSymbol.Name.Trim('_');
                 if (name.Length > 2 && char.IsLetter(name[0]) && name[1] == '_')
@@ -101,25 +109,54 @@ namespace Microsoft.DotNet.CodeFormatting.Rules
                     return fieldSymbol.Name;
                 }
 
+                if (isPublicOrHasConstantValue)
+                {
+                    return ToPascalCase(name);
+                }
+
                 if (name.Length > 2 && char.IsUpper(name[0]) && char.IsLower(name[1]))
                 {
                     name = char.ToLower(name[0]) + name.Substring(1);
                 }
 
-                if (fieldSymbol.IsStatic)
+                return "_" + name;
+            }
+
+            private static string ToPascalCase(string name)
+            {
+                var parts = name.Split('_');
+
+                if (parts.Length == 0)
                 {
-                    // Check for ThreadStatic private fields.
-                    if (fieldSymbol.GetAttributes().Any(a => a.AttributeClass.Name.Equals("ThreadStaticAttribute", StringComparison.Ordinal)))
+                    return name;
+                }
+
+                var builder = new StringBuilder();
+                foreach (var part in parts)
+                {
+                    if (part.Length < 1)
                     {
-                        return "t_" + name;
+                        builder.Append(part);
                     }
                     else
                     {
-                        return "s_" + name;
+                        builder.Append(char.ToUpper(part[0]));
+
+                        if (part.Length > 1)
+                        {
+                            var rest = part.Substring(1);
+
+                            if (rest.All(c => char.IsUpper(c)))
+                            {
+                                rest = rest.ToLower();
+                            }
+                            
+                            builder.Append(rest);
+                        }
                     }
                 }
 
-                return "_" + name;
+                return builder.ToString();
             }
 
             private async Task<Solution> CleanSolutionAsync(Solution newSolution, Solution oldSolution, CancellationToken cancellationToken)
@@ -155,12 +192,12 @@ namespace Microsoft.DotNet.CodeFormatting.Rules
 
         private const string s_renameAnnotationName = "Rename";
 
-        private readonly static SyntaxAnnotation s_markerAnnotation = new SyntaxAnnotation("PrivateFieldToRename");
+        private readonly static SyntaxAnnotation s_markerAnnotation = new SyntaxAnnotation("FieldToRename");
 
         // Used to avoid the array allocation on calls to WithAdditionalAnnotations
         private readonly static SyntaxAnnotation[] s_markerAnnotationArray;
 
-        static PrivateFieldNamingRule()
+        static FieldNamingRule()
         {
             s_markerAnnotationArray = new[] { s_markerAnnotation };
         }
@@ -188,16 +225,24 @@ namespace Microsoft.DotNet.CodeFormatting.Rules
             }
         }
 
-        private static bool IsGoodPrivateFieldName(string name, bool isInstance)
+        private static bool IsGoodFieldName(string name, bool isPublicOrConst)
         {
-            if (isInstance)
+            if (name.Length < 1)
             {
-                return name.Length > 0 && name[0] == '_';
+                return false;
             }
-            else
+
+            if (!isPublicOrConst)
             {
-                return name.Length > 1 && (name[0] == 's' || name[0] == 't') && name[1] == '_';
+                return name[0] == '_';
             }
+
+            if (char.IsLower(name[0]) || name.Contains('_'))
+            {
+                return false;
+            }
+
+            return name.Length > 1 ? name.Any(c => char.IsLower(c)) : true;
         }
     }
 }

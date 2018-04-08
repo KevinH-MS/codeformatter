@@ -105,7 +105,7 @@ class C {
 }";
 
             DisableAllRules();
-            ToggleRule(PrivateFieldNamingRule.Name, enabled: true);
+            ToggleRule(FieldNamingRule.Name, enabled: true);
 
             Verify(text, expected, runFormatter: false);
         }
@@ -133,7 +133,7 @@ internal class C
     }
 }";
 
-            ToggleRule(PrivateFieldNamingRule.Name, enabled: false);
+            ToggleRule(FieldNamingRule.Name, enabled: false);
             Verify(text, expected, runFormatter: false);
         }
 

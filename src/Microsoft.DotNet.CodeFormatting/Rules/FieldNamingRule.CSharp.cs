@@ -17,13 +17,13 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace Microsoft.DotNet.CodeFormatting.Rules
 {
-    internal partial class PrivateFieldNamingRule
+    internal partial class FieldNamingRule
     {
         private sealed class CSharpRule : CommonRule
         {
-            protected override SyntaxNode AddPrivateFieldAnnotations(SyntaxNode syntaxNode, out int count)
+            protected override SyntaxNode AddFieldAnnotations(SyntaxNode syntaxNode, out int count)
             {
-                return CSharpPrivateFieldAnnotationsRewriter.AddAnnotations(syntaxNode, out count);
+                return CSharpFieldAnnotationsRewriter.AddAnnotations(syntaxNode, out count);
             }
 
             protected override SyntaxNode RemoveRenameAnnotations(SyntaxNode syntaxNode)
@@ -36,13 +36,13 @@ namespace Microsoft.DotNet.CodeFormatting.Rules
         /// <summary>
         /// This will add an annotation to any private field that needs to be renamed.
         /// </summary>
-        internal sealed class CSharpPrivateFieldAnnotationsRewriter : CSharpSyntaxRewriter
+        internal sealed class CSharpFieldAnnotationsRewriter : CSharpSyntaxRewriter
         {
             private int _count;
 
             internal static SyntaxNode AddAnnotations(SyntaxNode node, out int count)
             {
-                var rewriter = new CSharpPrivateFieldAnnotationsRewriter();
+                var rewriter = new CSharpFieldAnnotationsRewriter();
                 var newNode = rewriter.Visit(node);
                 count = rewriter._count;
                 return newNode;
@@ -50,13 +50,13 @@ namespace Microsoft.DotNet.CodeFormatting.Rules
 
             public override SyntaxNode VisitFieldDeclaration(FieldDeclarationSyntax node)
             {
-                bool isInstance;
-                if (NeedsRewrite(node, out isInstance))
+                bool isPublicOrConst;
+                if (NeedsRewrite(node, out isPublicOrConst))
                 {
                     var list = new List<VariableDeclaratorSyntax>(node.Declaration.Variables.Count);
                     foreach (var v in node.Declaration.Variables)
                     {
-                        if (IsGoodPrivateFieldName(v.Identifier.Text, isInstance))
+                        if (IsGoodFieldName(v.Identifier.Text, isPublicOrConst))
                         {
                             list.Add(v);
                         }
@@ -76,45 +76,19 @@ namespace Microsoft.DotNet.CodeFormatting.Rules
                 return node;
             }
 
-            private static bool NeedsRewrite(FieldDeclarationSyntax fieldSyntax, out bool isInstance)
+            private static bool NeedsRewrite(FieldDeclarationSyntax fieldSyntax, out bool isPublicOrConst)
             {
-                if (!IsPrivateField(fieldSyntax, out isInstance))
-                {
-                    return false;
-                }
+                isPublicOrConst = fieldSyntax.Modifiers.Any(m => m.Kind() == SyntaxKind.PublicKeyword || m.Kind() == SyntaxKind.ConstKeyword);
 
                 foreach (var v in fieldSyntax.Declaration.Variables)
                 {
-                    if (!IsGoodPrivateFieldName(v.Identifier.ValueText, isInstance))
+                    if (!IsGoodFieldName(v.Identifier.ValueText, isPublicOrConst))
                     {
                         return true;
                     }
                 }
 
                 return false;
-            }
-
-            private static bool IsPrivateField(FieldDeclarationSyntax fieldSyntax, out bool isInstance)
-            {
-                var isPrivate = true;
-                isInstance = true;
-                foreach (var modifier in fieldSyntax.Modifiers)
-                {
-                    switch (modifier.Kind())
-                    {
-                        case SyntaxKind.PublicKeyword:
-                        case SyntaxKind.ConstKeyword:
-                        case SyntaxKind.InternalKeyword:
-                        case SyntaxKind.ProtectedKeyword:
-                            isPrivate = false;
-                            break;
-                        case SyntaxKind.StaticKeyword:
-                            isInstance = false;
-                            break;
-                    }
-                }
-
-                return isPrivate;
             }
         }
 

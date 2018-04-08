@@ -17,7 +17,7 @@ namespace Microsoft.DotNet.CodeFormatting
         [DefaultValue(int.MaxValue)]
         int Order { get; }
 
-        [DefaultValue(true)]
+        [DefaultValue(false)]
         bool DefaultRule { get; }
     }
 }

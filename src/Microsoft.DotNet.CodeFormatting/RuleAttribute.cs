@@ -22,7 +22,7 @@ namespace Microsoft.DotNet.CodeFormatting
             Name = name;
             Description = description;
             Order = order;
-            DefaultRule = true;
+            DefaultRule = false;
         }
 
         [DefaultValue("")]
@@ -34,7 +34,7 @@ namespace Microsoft.DotNet.CodeFormatting
         [DefaultValue(int.MaxValue)]
         public int Order { get; private set; }
 
-        [DefaultValue(true)]
+        [DefaultValue(false)]
         public bool DefaultRule { get; set; }
     }
 
@@ -48,7 +48,7 @@ namespace Microsoft.DotNet.CodeFormatting
             Name = name;
             Description = description;
             Order = order;
-            DefaultRule = true;
+            DefaultRule = false;
         }
 
         [DefaultValue("")]
@@ -68,13 +68,13 @@ namespace Microsoft.DotNet.CodeFormatting
     [AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]
     internal sealed class GlobalSemanticRuleAttribute : ExportAttribute, IRuleMetadata
     {
-        public GlobalSemanticRuleAttribute(string name, string description, int order)
+        public GlobalSemanticRuleAttribute(string name, string description, int order, bool isDefaultRule = false)
             : base(typeof(IGlobalSemanticFormattingRule))
         {
             Name = name;
             Description = description;
             Order = order;
-            DefaultRule = true;
+            DefaultRule = isDefaultRule;
         }
 
         [DefaultValue("")]
@@ -86,7 +86,7 @@ namespace Microsoft.DotNet.CodeFormatting
         [DefaultValue(int.MaxValue)]
         public int Order { get; private set; }
 
-        [DefaultValue(true)]
+        [DefaultValue(false)]
         public bool DefaultRule { get; set; }
     }
 }

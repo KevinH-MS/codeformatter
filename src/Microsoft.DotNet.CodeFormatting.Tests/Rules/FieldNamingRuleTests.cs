@@ -7,14 +7,14 @@ using Xunit;
 
 namespace Microsoft.DotNet.CodeFormatting.Tests
 {
-    public class PrivateFieldNamingRuleTests : GlobalSemanticRuleTestBase
+    public class FieldNamingRuleTests : GlobalSemanticRuleTestBase
     {
         internal override IGlobalSemanticFormattingRule Rule
         {
-            get { return new Rules.PrivateFieldNamingRule(); }
+            get { return new Rules.FieldNamingRule(); }
         }
 
-        public sealed class CSharpFields : PrivateFieldNamingRuleTests
+        public sealed class CSharpFields : FieldNamingRuleTests
         {
             [Fact]
             public void TestUnderScoreInPrivateFields()
@@ -37,17 +37,17 @@ class T
 using System;
 class T
 {
-    private static int s_x;
-    private static int s_y;
+    private static int _x;
+    private static int _y;
     // some trivia
-    private static int s_z;
+    private static int _z;
     // some trivia
     private int _k = 1, _s = 2, _rsk_yz = 3, _y_z;
     // some trivia
     [ThreadStatic]
-    static int t_r;
+    static int _r;
     [ThreadStaticAttribute]
-    static int t_r;
+    static int _r;
 }";
                 Verify(text, expected);
             }
@@ -106,12 +106,12 @@ class C1
 
 class C2
 {
-    private static int s_field1, s_field2, s_field3;
+    private static int _field1, _field2, _field3;
 }
 
 class C3
 {
-    internal int field1, field2, field3;
+    internal int _field1, _field2, _field3;
 }
 ";
 
@@ -139,9 +139,9 @@ class C
 class C
 {
     int _field;
-    static int s_other;
+    static int _other;
     int _GCField;
-    static int s_GCOther;
+    static int _GCOther;
 }
 ";
 
@@ -213,11 +213,65 @@ class C
 
                 Verify(text, expected);
             }
+
+            [Fact]
+            public void RemoveTwoLetterThreadStaticPrefix()
+            {
+                var text = @"
+class C
+{
+    int ts_instance;
+    static int ts_Static;
+    [System.ThreadStatic]static int ts_ThreadStatic;
+}
+";
+
+                var expected = @"
+class C
+{
+    int _instance;
+    static int _static;
+    [System.ThreadStatic]static int _threadStatic;
+}
+";
+
+                Verify(text, expected, runFormatter: false);
+            }
+
+            [Fact]
+            public void Const()
+            {
+                var text = @"
+class C
+{
+    const int _const1 = 3;
+    public const bool THIS_IS_A_BOOL = true;
+    public bool THIS_IS_AN_INSTANCE_BOOL = true;
+    const float AlreadyPascal = 3.14;
+    protected float ShouldBeCamel = 1.27;
+    private const char lowercase = 'l';
+}
+";
+
+                var expected = @"
+class C
+{
+    const int Const1 = 3;
+    public const bool ThisIsABool = true;
+    public bool ThisIsAnInstanceBool = true;
+    const float AlreadyPascal = 3.14;
+    protected float _shouldBeCamel = 1.27;
+    private const char Lowercase = 'l';
+}
+";
+
+                Verify(text, expected, runFormatter: false);
+            }
         }
 
-        public sealed class VisualBasicFields : PrivateFieldNamingRuleTests
+        public sealed class VisualBasicFields : FieldNamingRuleTests
         {
-            [Fact]
+            [Fact(Skip = "VB NYI")]
             public void Simple()
             {
                 var text = @"
@@ -243,13 +297,13 @@ End Module";
 
                 var expected = @"
 Module C
-    Private s_field As Integer
+    Private _field As Integer
 End Module";
 
                 Verify(text, expected, runFormatter: false, languageName: LanguageNames.VisualBasic);
             }
 
-            [Fact]
+            [Fact(Skip = "VB NYI")]
             public void MultipleDeclarations()
             {
                 var text = @"
@@ -265,7 +319,7 @@ End Class";
                 Verify(text, expected, runFormatter: false, languageName: LanguageNames.VisualBasic);
             }
 
-            [Fact]
+            [Fact(Skip = "VB NYI")]
             public void FieldAndUse()
             {
                 var text = @"
@@ -289,7 +343,7 @@ End Class";
                 Verify(text, expected, runFormatter: false, languageName: LanguageNames.VisualBasic);
             }
 
-            [Fact]
+            [Fact(Skip = "VB NYI")]
             public void Issue69()
             {
                 var text = @"
@@ -315,7 +369,7 @@ End Class";
                 Verify(text, expected, languageName: LanguageNames.VisualBasic);
             }
 
-            [Fact]
+            [Fact(Skip = "VB NYI")]
             public void FieldMarkedWithEvents()
             {   // See:  https://github.com/dotnet/codeformatter/issues/216
 
@@ -330,30 +384,6 @@ Class C1
 End Class";
 
                 Verify(text, expected, languageName: LanguageNames.VisualBasic);
-            }
-
-            [Fact]
-            public void RemoveTwoLetterThreadStaticPrefix()
-            {
-                var text = @"
-class C
-{
-    int ts_instance;
-    static int ts_Static;
-    [System.ThreadStatic]static int ts_ThreadStatic;
-}
-";
-
-                var expected = @"
-class C
-{
-    int _instance;
-    static int s_static;
-    [System.ThreadStatic]static int t_threadStatic;
-}
-";
-
-                Verify(text, expected, runFormatter: false);
             }
         }
     }
