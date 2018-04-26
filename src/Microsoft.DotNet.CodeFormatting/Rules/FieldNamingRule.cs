@@ -225,14 +225,14 @@ namespace Microsoft.DotNet.CodeFormatting.Rules
             }
         }
 
-        private static bool IsGoodFieldName(string name, bool isPublicOrConst)
+        private static bool IsGoodFieldName(string name, bool isLogicalConstant)
         {
             if (name.Length < 1)
             {
                 return false;
             }
 
-            if (!isPublicOrConst)
+            if (!isLogicalConstant)
             {
                 return name[0] == '_';
             }

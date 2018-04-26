@@ -50,13 +50,13 @@ namespace Microsoft.DotNet.CodeFormatting.Rules
 
             public override SyntaxNode VisitFieldDeclaration(FieldDeclarationSyntax node)
             {
-                bool isPublicOrConst;
-                if (NeedsRewrite(node, out isPublicOrConst))
+                bool isLogicalConstant;
+                if (NeedsRewrite(node, out isLogicalConstant))
                 {
                     var list = new List<VariableDeclaratorSyntax>(node.Declaration.Variables.Count);
                     foreach (var v in node.Declaration.Variables)
                     {
-                        if (IsGoodFieldName(v.Identifier.Text, isPublicOrConst))
+                        if (IsGoodFieldName(v.Identifier.Text, isLogicalConstant))
                         {
                             list.Add(v);
                         }
@@ -76,13 +76,37 @@ namespace Microsoft.DotNet.CodeFormatting.Rules
                 return node;
             }
 
-            private static bool NeedsRewrite(FieldDeclarationSyntax fieldSyntax, out bool isPublicOrConst)
+            private static bool NeedsRewrite(FieldDeclarationSyntax fieldSyntax, out bool isLogicalConstant)
             {
-                isPublicOrConst = fieldSyntax.Modifiers.Any(m => m.Kind() == SyntaxKind.PublicKeyword || m.Kind() == SyntaxKind.ConstKeyword);
+                var isPublic = false;
+                var isConst = false;
+                var isReadOnly = false;
+                var isStatic = false;
+
+                foreach (var modifier in fieldSyntax.Modifiers)
+                {
+                    switch (modifier.Kind())
+                    {
+                        case SyntaxKind.PublicKeyword:
+                            isPublic = true;
+                            break;
+                        case SyntaxKind.ConstKeyword:
+                            isConst = true;
+                            break;
+                        case SyntaxKind.ReadOnlyKeyword:
+                            isReadOnly = true;
+                            break;
+                        case SyntaxKind.StaticKeyword:
+                            isStatic = true;
+                            break;
+                    }
+                }
+
+                isLogicalConstant = isPublic || isConst || (isStatic && isReadOnly);
 
                 foreach (var v in fieldSyntax.Declaration.Variables)
                 {
-                    if (!IsGoodFieldName(v.Identifier.ValueText, isPublicOrConst))
+                    if (!IsGoodFieldName(v.Identifier.ValueText, isLogicalConstant))
                     {
                         return true;
                     }
